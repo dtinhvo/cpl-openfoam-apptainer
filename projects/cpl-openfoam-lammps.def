@@ -29,8 +29,10 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     apt install -y --no-install-recommends \
         libfftw3-dev libjpeg-dev libpng-dev cmake zlib1g-dev m4 \
         flex libfl-dev cmake bison libopenblas-dev liblapack-dev
-    git clone --depth 1 --branch {{ LAMMPS_VERSION }} https://github.com/lammps/lammps.git /opt/lammps
+    git clone --depth 1 https://github.com/lammps/lammps.git /opt/lammps
     cd /opt/lammps
+    git fetch --depth 1 origin {{ LAMMPS_VERSION }}
+    git checkout {{ LAMMPS_VERSION }}
     lammps_commit=$(git rev-parse --short HEAD)
     mkdir build
     cd build
@@ -52,8 +54,6 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     export MPI_ARCH_INC="-isystem $MPI_ROOT/include"
     export MPI_ARCH_LIBS="-L$MPI_ROOT/lib -lmpi"
     export MPI_ARCH_FLAGS="-DOMPI_SKIP_MPICXX"
-    curl https://raw.githubusercontent.com/Crompulence/CPL_APP_OPENFOAM/{{ SOCKET_VERSION }}/SOURCEME.sh > SOURCEME.sh
-    sed -i 's/export FOAM_CPL_VERSION=.*/export FOAM_CPL_VERSION=v{{ OPENFOAM_VERSION }}/' SOURCEME.sh
     export FOAM_INSTALL_DIR=/usr/lib/openfoam/openfoam{{ OPENFOAM_VERSION }}
     source etc/bashrc
     export FOAM_CPL_APP_LIBBIN=${FOAM_LIBBIN}
@@ -64,14 +64,14 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
             commit: $commit,
             patches_path: "/opt/patches",
             path: "/usr/lib/openfoam/openfoam{{ OPENFOAM_VERSION }}",
-            version: {{ OPENFOAM_VERSION }}
+            version: "{{ OPENFOAM_VERSION }}"
         }
         else . +
         {
             commit: $commit,
             path: "/usr/lib/openfoam/openfoam{{ OPENFOAM_VERSION }}",
             patches_path: "/opt/patches",
-            version: {{ OPENFOAM_VERSION }}
+            version: "{{ OPENFOAM_VERSION }}"
         } end' /apps.json > /tmp/apps.json
     mv /tmp/apps.json /apps.json
     jq --arg app lammps --arg commit $lammps_commit \
@@ -88,6 +88,7 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
             version: "{{ LAMMPS_VERSION }}"
         } end' /apps.json > /tmp/apps.json
     mv /tmp/apps.json /apps.json
+    info
 
 %environment
     export MPI_ROOT="/opt/mpich"
@@ -101,13 +102,11 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     if [ $# -eq 0 ]; then
         exec /bin/bash -c '
             source /usr/lib/openfoam/openfoam{{ OPENFOAM_VERSION }}/etc/bashrc > /dev/null
-            source /usr/lib/openfoam/openfoam{{ OPENFOAM_VERSION }}/SOURCEME.sh > /dev/null
             /bin/bash --login
         '
     else
         exec /bin/bash -c "
             source /usr/lib/openfoam/openfoam{{ OPENFOAM_VERSION }}/etc/bashrc > /dev/null
-            source /usr/lib/openfoam/openfoam{{ OPENFOAM_VERSION }}/SOURCEME.sh > /dev/null
             $@"
     fi
 

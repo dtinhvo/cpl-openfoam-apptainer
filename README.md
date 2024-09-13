@@ -1,6 +1,6 @@
 # CPL/OpenFOAM+LAMMPS containers with apptainer
 
-Here are your quick instructions to get started:
+Here are your quick instructions to build the containers:
 ```bash
 git clone https://github.com/FoamScience/openfoam-apptainer-packaging /tmp/tainers
 git clone https://github.com/FoamScience/cpl-openfoam-containers
@@ -8,25 +8,39 @@ cd cpl-openfoam-containers
 ansible-playbook /tmp/tainers/build.yaml --extra-vars "original_dir=$PWD" --extra-vars "@config.yaml"
 # check containers/projects/cpl-openfoam-lammps*.sif
 ```
+
+But you can also just pull it from GHCR.io:
 ```bash
 # Adjust the container path accordingly
-alias cpl="apptainer run --sharens /path/to/cpl-openfoam-containers/containers/projects/cpl-openfoam-lammps*.sif"
+apptainer pull cpl-openfoam-lammps-2112-fcbc37d5a40e6dbd91148921378d28fca5294675.sif oras://ghcr.io/foamscience/cpl-openfoam-lammps-2112-fcbc37d5a40e6dbd91148921378d28fca5294675:latest
+alias cpl="apptainer run --sharens cpl-openfoam-lammps-2112-fcbc37d5a40e6dbd91148921378d28fca5294675.sif"
 cpl info
 ```
 
 Now to use the container:
+
+> [!NOTE]
+> The CPL/OpenFOAM/LAMMPS container is set-up in way that favours continuous development.
+> So, you can compile the socket and any solvers into your repo
+> (check lib and bin folders after running the `wmake` commands bellow).
+> This way, you can retain the binaries between separate runs of the container,
+> which is the preferred way (compared to interactive shells inside the container)
+> for reproducibility reasons.
+
 ```bash
 git clone https://github.com/Crompulence/CPL_APP_OPENFOAM
 cd CPL_APP_OPENFOAM
 # modify Pstream includes since OpenFOAM is patched on the container
 find . -name options -exec sed -i 's;$(FOAM_CPL_APP_SRC)/CPLPstream/lnInclude;$(LIB_SRC)/Pstream/mpi/lnInclude;' {} \;
 # Adjust the container path accordingly
-alias cpl="apptainer run --sharens /path/to/cpl-openfoam-containers/containers/projects/cpl-openfoam-lammps*.sif"
+alias cpl="apptainer run --sharens /path/to/cpl-openfoam-lammps*.sif"
 # Due to SOURCEME.sh using CWD, you have to source it every time and work only from root folder of the repo
 cpl "source SOURCEME.sh; wmake src/CPLSocketFOAM"
 cpl "source SOURCEME.sh; wmake src/solvers/CPLTestFoam"
 cpl "source SOURCEME.sh; cd examples/CPLTestFoam && ./run.sh"
 # (You will have to make adjustments to Makefile if you want to compile with make)
+# if you want a shell inside the container:
+cpl
 ```
 
 Then you can post process on the host machine. Or, add processing tools to
@@ -35,5 +49,5 @@ Then you can post process on the host machine. Or, add processing tools to
 If you want to alter the container itself in any way, create an overlay image and load it:
 ```bash
 apptainer overlay create -s 1024 overlay.img #<- 1GB overlay image
-apptainer run --sharens --overlay overlay.img path/to/cpl-openfoam-containers/containers/projects/cpl-openfoam-lammps*.sif
+apptainer run --sharens --overlay overlay.img path/to/cpl-openfoam-lammps*.sif
 ```

@@ -1,0 +1,28 @@
+containers:
+  extra_basics: .
+  basic:
+    cpl: # base container identifier
+      os:
+        distro: ubuntu
+        version: 24.04
+      mpi:
+        implementation: mpich
+        version: 4.2.2
+      framework:
+        definition: cpl
+        version: 712bb02a
+  projects:
+    cpl-openfoam-lammps:
+      base_container: cpl
+      definition: projects/cpl-openfoam-lammps.def
+      build_args:
+        openfoam_version:
+          - 2112
+        lammps_version:
+          - fcbc37d5
+        socket_version:
+          - 51bd8208
+pull:
+  try_to_pull: true
+  protocol: "oras"
+  scope: "ghcr.io/foamscience"

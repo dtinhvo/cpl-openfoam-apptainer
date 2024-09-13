@@ -1,0 +1,63 @@
+# ---------------------------------------------------------------------------
+#
+# Create Ubuntu image with MPICH
+#
+# Build
+#   apptainer build mpich.sif mpich.def
+#
+# Note
+#   apptainer version 1.3.1
+#
+# ---------------------------------------------------------------------------
+Bootstrap: docker
+From: {{ OS_DISTRO }}:{{ OS_VERSION }}
+
+%arguments
+    OS_DISTRO=ubuntu
+    OS_VERSION=24.04
+    MPI_IMPLEMENTATION=openmpi
+    MPI_VERSION=4.1.5
+
+%files
+    partials/info /usr/bin/info
+
+%post -c /bin/bash
+    DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get -y install --no-install-recommends \
+        curl gcc g++ gfortran make file jq ca-certificates bzip2 git \
+        python3 python3-venv python3-pip
+    export MPI_VERSION={{ MPI_VERSION }}
+    export MPICH_URL="https://www.mpich.org/static/downloads/{{ MPI_VERSION }}/mpich-{{ MPI_VERSION }}.tar.gz"
+    export MPICH_DIR=/opt/mpich
+    mkdir -p $MPICH /tmp/mpich
+    cd /tmp/mpich && curl -O $MPICH_URL && tar -xzf mpich-$MPI_VERSION.tar.gz
+    cd /tmp/mpich/mpich-$MPI_VERSION && ./configure --prefix=$MPICH_DIR && make -j$(nproc) && make install
+    rm -rf /tmp/mpich
+    export PATH=$MPICH_DIR/bin:$PATH
+    export LD_LIBRARY_PATH=$MPICH_DIR/lib:$LD_LIBRARY_PATH
+    chmod +x /opt/mpich/bin/*
+    cp -r /opt/mpich/include/* /usr/include/
+    echo '{}' > /apps.json
+    jq --arg app mpich \
+        '.[$app] |= if . == null then
+        {
+            version: "{{ MPI_VERSION }}"
+        }
+        else . +
+        {
+            version: "{{ MPI_VERSION }}"
+        } end' /apps.json > /tmp/apps.json
+    mv /tmp/apps.json /apps.json
+
+%environment
+    export MPICH_DIR=/opt/mpich
+    export PATH="$MPICH_DIR/bin:$PATH"
+    export LD_LIBRARY_PATH="$MPICH_DIR/lib:$LD_LIBRARY_PATH"
+    export MANPATH="$MPICH_DIR/share/man:$MANPATH"
+    export SHELL=/bin/bash
+
+%labels
+    Maintainer Mohammed Elwardi Fadeli
+    Description Ubuntu-based MPICH image
+    AppsFile /apps.json

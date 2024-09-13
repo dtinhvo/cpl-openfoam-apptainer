@@ -1,0 +1,68 @@
+# ---------------------------------------------------------------------------
+#
+# Create Ubuntu-based CPL image
+#
+# Build
+#   apptainer build cpl.sif cpl.def
+#
+# Note
+#   apptainer version 1.3.1
+#
+# ---------------------------------------------------------------------------
+Bootstrap: localimage
+From: containers/basic/{{ OS_DISTRO }}-{{ OS_VERSION }}-{{MPI_IMPLEMENTATION}}-{{ MPI_VERSION }}.sif
+
+%arguments
+    OS_DISTRO=ubuntu
+    OS_VERSION=24.04
+    MPI_IMPLEMENTATION=mpich
+    MPI_VERSION=4.1
+    FRAMEWORK_VERSION=master
+    FRAMEWORK_GIT_REF=default
+
+%post -c /bin/bash
+    python3 -m venv cpl
+    source cpl/bin/activate
+    pip3 install mpi4py numpy pytest scipy
+    git clone https://github.com/Crompulence/cpl-library /opt/cpl
+    cd /opt/cpl
+    git checkout {{ FRAMEWORK_VERSION }}
+    make PLATFORM=gcc
+    jq --arg app cpl --arg commit {{ FRAMEWORK_VERSION }} \
+        '.[$app] |= if . == null then
+        {
+            fork: "cpl-library",
+            commit: $commit,
+            version: "{{ FRAMEWORK_VERSION }}"
+        }
+        else . +
+        {
+            fork: "cpl-library",
+            commit: $commit,
+            version: "{{ FRAMEWORK_VERSION }}"
+        } end' /apps.json > /tmp/apps.json
+    mv /tmp/apps.json /apps.json
+
+%environment
+    export CPL_PATH=/opt/cpl
+    export CPL_BIN_PATH="$CPL_PATH/bin"
+    export PATH=${CPL_BIN_PATH}:$PATH
+    export CPL_LIBRARY_PATH="$CPL_PATH/lib"
+    export CPL_INCLUDE_PATH="$CPL_PATH/include"
+    export LD_LIBRARY_PATH="$CPL_LIBRARY_PATH/:${LD_LIBRARY_PATH}"
+    export PYTHONPATH="$CPL_PATH/src/bindings/python:$PYTHONPATH"
+    export PYTHONPATH="$CPL_PATH/utils:$PYTHONPATH"
+    export CPLPY_PATH="$CPL_PATH/src/bindings/python"
+    . /cpl/bin/activate
+
+#%runscript
+#    /bin/bash -c 'cd /usr/lib/openfoam/openfoam{{ FRAMEWORK_VERSION }} && source etc/bashrc && mkdir -p $FOAM_USER_LIBBIN && mkdir -p $FOAM_USER_APPBIN'
+#    if [ $# -eq 0 ]; then
+#        /usr/bin/openfoam{{ FRAMEWORK_VERSION }}
+#    else
+#        /usr/bin/openfoam{{ FRAMEWORK_VERSION }} $@
+#    fi
+
+%labels
+    Maintainer Mohammed Elwardi Fadeli
+    Description Ubuntu-based ESI CPL image

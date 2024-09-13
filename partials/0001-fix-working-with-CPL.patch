@@ -1,0 +1,117 @@
+From 82204b30ebae3983e7397503bc986a0d727313ea Mon Sep 17 00:00:00 2001
+From: Elwardi <elwardi.fadeli@tu-darmstadt.de>
+Date: Wed, 11 Sep 2024 14:30:49 +0200
+Subject: [PATCH] fix: working with CPL
+
+---
+ src/Pstream/mpi/Make/files       |  3 ++-
+ src/Pstream/mpi/PstreamGlobals.C |  4 ++++
+ src/Pstream/mpi/PstreamGlobals.H |  3 +++
+ src/Pstream/mpi/UPstream.C       | 24 ++++++++++++------------
+ 4 files changed, 21 insertions(+), 13 deletions(-)
+
+diff --git a/src/Pstream/mpi/Make/files b/src/Pstream/mpi/Make/files
+index eccdf77664..8ce937fc50 100644
+--- a/src/Pstream/mpi/Make/files
++++ b/src/Pstream/mpi/Make/files
+@@ -3,4 +3,5 @@ UIPread.C
+ UPstream.C
+ PstreamGlobals.C
+ 
+-LIB = $(FOAM_MPI_LIBBIN)/libPstream
++LIB = $(FOAM_CPL_APP_LIBBIN)/libPstream
++
+diff --git a/src/Pstream/mpi/PstreamGlobals.C b/src/Pstream/mpi/PstreamGlobals.C
+index a5c9f5c87f..348257f801 100644
+--- a/src/Pstream/mpi/PstreamGlobals.C
++++ b/src/Pstream/mpi/PstreamGlobals.C
+@@ -61,5 +61,9 @@ void Foam::PstreamGlobals::checkCommunicator
+     }
+ }
+ 
++// Set default that CPL realm communicator MPI_COMM_WORLD
++// so if not set in coupling, will still work for just continuum
++MPI_Comm Foam::PstreamGlobals::CPLRealmComm = MPI_COMM_WORLD; //MPI_COMM_NULL;
++
+ 
+ // ************************************************************************* //
+diff --git a/src/Pstream/mpi/PstreamGlobals.H b/src/Pstream/mpi/PstreamGlobals.H
+index b3e9501d58..b23237f475 100644
+--- a/src/Pstream/mpi/PstreamGlobals.H
++++ b/src/Pstream/mpi/PstreamGlobals.H
+@@ -65,6 +65,9 @@ extern DynamicList<MPI_Group> MPIGroups_;
+ 
+ void checkCommunicator(const label comm, const label toProcNo);
+ 
++//- Gavin added CPLRealmComm for CPL
++extern MPI_Comm CPLRealmComm;
++
+ };
+ 
+ 
+diff --git a/src/Pstream/mpi/UPstream.C b/src/Pstream/mpi/UPstream.C
+index 7a5332ce81..c90735a443 100644
+--- a/src/Pstream/mpi/UPstream.C
++++ b/src/Pstream/mpi/UPstream.C
+@@ -274,8 +274,8 @@ bool Foam::UPstream::init(int& argc, char**& argv, const bool needsThread)
+         argc -= 2;
+     }
+ 
+-    MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
+-    MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
++    MPI_Comm_size(Foam::PstreamGlobals::CPLRealmComm, &numprocs);
++    MPI_Comm_rank(Foam::PstreamGlobals::CPLRealmComm, &myRank);
+ 
+     if (debug)
+     {
+@@ -284,12 +284,12 @@ bool Foam::UPstream::init(int& argc, char**& argv, const bool needsThread)
+             << " world:" << world << endl;
+     }
+ 
+-    if (worldIndex == -1 && numprocs <= 1)
+-    {
+-        FatalErrorInFunction
+-            << "attempt to run parallel on 1 processor"
+-            << Foam::abort(FatalError);
+-    }
++    //if (worldIndex == -1 && numprocs <= 1)
++    //{
++    //    FatalErrorInFunction
++    //        << "attempt to run parallel on 1 processor"
++    //        << Foam::abort(FatalError);
++    //}
+ 
+     // Initialise parallel structure
+     setParRun(numprocs, provided_thread_support == MPI_THREAD_MULTIPLE);
+@@ -464,7 +464,7 @@ void Foam::UPstream::shutdown(int errNo)
+         else
+         {
+             // Abort only locally or world?
+-            MPI_Abort(MPI_COMM_WORLD, errNo);
++            MPI_Abort(Foam::PstreamGlobals::CPLRealmComm, errNo);
+         }
+     }
+ }
+@@ -479,7 +479,7 @@ void Foam::UPstream::exit(int errNo)
+ 
+ void Foam::UPstream::abort()
+ {
+-    MPI_Abort(MPI_COMM_WORLD, 1);
++    MPI_Abort(Foam::PstreamGlobals::CPLRealmComm, 1);
+ }
+ 
+ 
+@@ -1061,8 +1061,8 @@ void Foam::UPstream::allocatePstreamCommunicator
+                 << UPstream::worldComm << Foam::exit(FatalError);
+         }
+ 
+-        PstreamGlobals::MPICommunicators_[index] = MPI_COMM_WORLD;
+-        MPI_Comm_group(MPI_COMM_WORLD, &PstreamGlobals::MPIGroups_[index]);
++        PstreamGlobals::MPICommunicators_[index] = Foam::PstreamGlobals::CPLRealmComm;
++        MPI_Comm_group(Foam::PstreamGlobals::CPLRealmComm, &PstreamGlobals::MPIGroups_[index]);
+         MPI_Comm_rank
+         (
+             PstreamGlobals::MPICommunicators_[index],
+-- 
+2.43.2
+

@@ -32,20 +32,11 @@ But you can also just pull it from GHCR.io:
 # Adjust the container path accordingly
 # cd path/to/cpl-openfoam-apptainer
 apptainer pull cpl-openfoam-lammps-2112-fcbc37d5a40e6dbd91148921378d28fca5294675.sif oras://ghcr.io/foamscience/cpl-openfoam-lammps-2112-fcbc37d5a40e6dbd91148921378d28fca5294675:latest
-alias cpl="apptainer run --sharens cpl-openfoam-lammps-2112-fcbc37d5a40e6dbd91148921378d28fca5294675.sif"
+alias cpl="apptainer run --hostname cpl --sharens cpl-openfoam-lammps-2112-fcbc37d5a40e6dbd91148921378d28fca5294675.sif"
 cpl info
 ```
 
 Now to use the container:
-
-> [!NOTE]
-> The CPL/OpenFOAM/LAMMPS container is set-up in way that favours continuous development.
-> So, you can compile the socket and any solvers into your repo
-> (check lib and bin folders after running the `wmake` commands bellow).
-> This way, you can retain the binaries between separate runs of the container,
-> which is the preferred way (compared to interactive shells inside the container)
-> for reproducibility reasons.
-
 ```bash
 # enter the container
 cpl
@@ -55,6 +46,14 @@ cd CPL_APP_OPENFOAM
 # modify Pstream includes since OpenFOAM is patched ON THE CONTAINER
 # this will not affect openFOAM in host
 find . -name options -exec sed -i 's;$(FOAM_CPL_APP_SRC)/CPLPstream/lnInclude;$(LIB_SRC)/Pstream/mpi/lnInclude;' {} \;
+> [!NOTE]
+> The CPL/OpenFOAM/LAMMPS container is set-up in way that favours continuous development.
+> So, you can compile the socket and any solvers into your repo
+> (check lib and bin folders after running the `wmake` commands bellow).
+> This way, you can retain the binaries between separate runs of the container,
+> which is the preferred way (compared to interactive shells inside the container)
+> for reproducibility reasons.
+
 
 # make CPL APP
 source SOURCEME.sh; wmake src/CPLSocketFOAM

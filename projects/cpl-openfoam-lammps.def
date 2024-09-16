@@ -25,6 +25,9 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
 
 %post -c /bin/bash
     # Install LAMMPS -------------
+    set -e
+	export MPI_HOME=/opt/mpich
+	export MPI_DIR=/opt/mpich
     DEBIAN_FRONTEND=noninteractive
     apt install -y --no-install-recommends \
         libfftw3-dev libjpeg-dev libpng-dev cmake zlib1g-dev m4 \
@@ -39,6 +42,8 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     cmake ../cmake -DCMAKE_INSTALL_PREFIX=/opt/lammps -DBUILD_MPI=on -DBUILD_OMP=off -DBUILD_LIB=on -DFFT=FFTW3
     make -j$(nproc)
     make install
+    # TODO make ELEC*, VTK, MOLECULE, EXTRA-PAIR, KSPACE. into an additional image?
+    set +e
 
     # Install OpenFOAM -----------
     git clone --branch OpenFOAM-v{{ OPENFOAM_VERSION }} \

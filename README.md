@@ -1,6 +1,7 @@
 # CPL/OpenFOAM+LAMMPS containers with apptainer
 
-> [!NOTE] Dependencies
+> [!NOTE]
+> Install dependencies, if you do not already have them
 > - Ansible
 > ```bash
 > sudo apt update

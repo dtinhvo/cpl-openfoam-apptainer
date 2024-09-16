@@ -1,5 +1,22 @@
 # CPL/OpenFOAM+LAMMPS containers with apptainer
 
+> [!NOTE] Dependencies
+> - Ansible
+> ```bash
+> sudo apt update
+> sudo apt install software-properties-common
+> sudo add-apt-repository --yes --update ppa:ansible/ansible
+> sudo apt install ansible
+>  ```
+> - Apptainer
+> ```bash
+> sudo apt install -y wget
+> cd /tmp
+> wget https://github.com/apptainer/apptainer/releases/download/v1.3.4/apptainer_1.3.4_amd64.deb
+> sudo apt install -y ./apptainer_1.3.4_amd64.deb
+> ```
+
+ 
 Here are your quick instructions to build the containers:
 ```bash
 git clone https://github.com/FoamScience/openfoam-apptainer-packaging /tmp/tainers

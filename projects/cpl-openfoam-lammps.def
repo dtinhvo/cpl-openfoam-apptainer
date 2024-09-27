@@ -24,22 +24,50 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     {{ CONTAINERS_DIR }}/../partials/0002-fix-compile-on-newer-compilers.patch /opt/patches/0002-fix-compile-on-newer-compilers.patch
 
 %post -c /bin/bash
-    # Install LAMMPS -------------
-    set -e
 	export MPI_HOME=/opt/mpich
 	export MPI_DIR=/opt/mpich
     DEBIAN_FRONTEND=noninteractive
     apt install -y --no-install-recommends \
         libfftw3-dev libjpeg-dev libpng-dev cmake zlib1g-dev m4 \
-        flex libfl-dev cmake bison libopenblas-dev liblapack-dev
+        flex libfl-dev cmake bison libopenblas-dev liblapack-dev \
+        ffmpeg 
+
+    apt install pkg-config
+    
+    set -e
+
+    # Install LAMMPS -------------
     git clone --depth 1 https://github.com/lammps/lammps.git /opt/lammps
     cd /opt/lammps
+    
+    # install VORO
+	mkdir /opt/VORO && cd /opt/VORO
+    curl -L "https://math.lbl.gov/voro++/download/dir/voro++-0.4.6.tar.gz"  | tar xz
+    cd voro++-0.4.6
+    make -j$(nproc)
+    make install
+    
+    # install VTK
+	cd /opt/lammps
+    curl -L "https://www.vtk.org/files/release/8.2/VTK-8.2.0.tar.gz" | tar xz && \
+        mkdir -p VTK-8.2.0/build
+    cd VTK-8.2.0/build && cmake .. && make -j$(nproc) && make install
+    # cp vtk-config VTK-8.2.0/build/CMakeCache.txt
+    cp Makefile.vtk lib/vtk/Makefile.lammps    
+	
+	cd /opt/lammps
     git fetch --depth 1 origin {{ LAMMPS_VERSION }}
     git checkout {{ LAMMPS_VERSION }}
     lammps_commit=$(git rev-parse --short HEAD)
     mkdir build
     cd build
-    cmake ../cmake -DCMAKE_INSTALL_PREFIX=/opt/lammps -DBUILD_MPI=on -DBUILD_OMP=off -DBUILD_LIB=on -DFFT=FFTW3
+    # -DDOWNLOAD_VORO=yes -DPKG_VORONOI=yes
+    cmake -C ../cmake/presets/most.cmake \
+    	-DPKG_VTK=yes -DPKG_MOLECULE=yes -DPKG_DIPOLE=yes  -DPKG_KSPACE=yes -DPKG_EXTRA-PAIR=yes -DPKG_DIELECTRIC=yes -DPKG_EFF=yes\
+    	-DVORO_INCLUDE_DIR=/usr/local/include/voro++ \
+   	 	-DVORO_LIBRARY=/usr/local/lib \
+   	   	-DCMAKE_INSTALL_PREFIX=/opt/lammps \
+   	   	-DBUILD_MPI=on -DBUILD_OMP=off -DBUILD_LIB=on -DFFT=FFTW3 ../cmake
     make -j$(nproc)
     make install
     # TODO make ELEC*, VTK, MOLECULE, EXTRA-PAIR, KSPACE. into an additional image?

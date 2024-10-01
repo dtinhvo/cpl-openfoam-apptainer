@@ -1,0 +1,72 @@
+# ---------------------------------------------------------------------------
+#
+# Create LAMMPS image for CPL
+#
+# Build
+#   apptainer build cpl-openfoam-lammps.sif cpl-openfoam-lammps.def
+#
+# Note
+#   apptainer version 1.3.1
+#
+# ---------------------------------------------------------------------------
+Bootstrap: localimage
+From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
+
+%arguments
+    BASE_CONTAINER=cpl
+    OS_DISTRO=ubuntu
+    OS_VERSION=24.04
+    MPI_IMPLEMENTATION=mpich
+    MPI_VERSION=4.2.2
+
+%files
+	
+%post -c /bin/bash
+	export MPI_HOME=/opt/mpich
+	export MPI_DIR=/opt/mpich
+	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+	
+    DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt install -y --no-install-recommends --fix-missing --fix-broken\
+        libfftw3-dev libjpeg-dev libpng-dev cmake zlib1g-dev m4 \
+        flex libfl-dev cmake bison libopenblas-dev liblapack-dev libvtk9-dev
+		
+
+		set -e
+	    
+    # install VORO (for LAMMPS)
+	mkdir /opt/VORO && cd /opt/VORO
+    curl -L "https://math.lbl.gov/voro++/download/dir/voro++-0.4.6.tar.gz"  | tar xz
+    cd voro++-0.4.6 ;    make -j$(nproc) ;    make install 
+
+    # Install LAMMPS -------------
+    git clone --depth 1 https://github.com/lammps/lammps.git /opt/lammps
+    cd /opt/lammps
+    git fetch --depth 1 origin {{ LAMMPS_VERSION }}
+    git checkout {{ LAMMPS_VERSION }}
+    lammps_commit=$(git rev-parse --short HEAD)
+    mkdir build
+    cd build
+    # -DVORO_INCLUDE_DIR=/usr/local/include/voro++ \
+	# -DVORO_LIBRARY=/usr/local/lib \   	   	
+    cmake -C ../cmake/presets/most.cmake \
+    	-DPKG_MOLECULE=yes -DPKG_DIPOLE=yes  -DPKG_KSPACE=yes -DPKG_EXTRA-PAIR=yes -DPKG_DIELECTRIC=yes -DPKG_EFF=yes\
+    	-DCMAKE_INSTALL_PREFIX=/opt/lammps \
+   	   	-DBUILD_MPI=on -DBUILD_OMP=off -DBUILD_LIB=on -DFFT=FFTW3 ../cmake
+    make -j$(nproc)
+    make install
+
+		set +e
+
+%environment
+    export MPI_ROOT="/opt/mpich"
+    export MPI_ARCH_INC="-isystem /opt/mpich/include"
+    export MPI_ARCH_LIBS="-L/opt/mpich/lib -lmpi"
+    export MPI_ARCH_FLAGS="-DOMPI_SKIP_MPICXX"
+    export PATH=/opt/lammps/bin:$PATH
+
+%runscript
+
+%labels
+    TBD LAMMPS for CPL 

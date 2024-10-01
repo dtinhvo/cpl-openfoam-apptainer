@@ -1,6 +1,6 @@
 # ---------------------------------------------------------------------------
 #
-# Create ESI-OpenFOAM/LAMMPS image for CPL
+# Create ESI-OpenFOAM image for CPL
 #
 # Build
 #   apptainer build cpl-openfoam-lammps.sif cpl-openfoam-lammps.def
@@ -22,54 +22,11 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
 %files
     {{ CONTAINERS_DIR }}/../partials/0001-fix-working-with-CPL.patch /opt/patches/0001-fix-working-with-CPL.patch
     {{ CONTAINERS_DIR }}/../partials/0002-fix-compile-on-newer-compilers.patch /opt/patches/0002-fix-compile-on-newer-compilers.patch
-	{{ CONTAINERS_DIR }}/../partials/vtk-config /opt/patches/vtk-config
-	{{ CONTAINERS_DIR }}/../partials/Makefile.vtk /opt/patches/Makefile.vtk
-		
+	
 %post -c /bin/bash
 	export MPI_HOME=/opt/mpich
 	export MPI_DIR=/opt/mpich
-	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
-	
-    DEBIAN_FRONTEND=noninteractive
-    apt-get update
-    apt install -y --no-install-recommends\
-        libfftw3-dev libjpeg-dev libpng-dev cmake zlib1g-dev m4 \
-        flex libfl-dev cmake bison libopenblas-dev liblapack-dev 
-        # libvtk9-dev
-    set -e
-        
-    # install VTK
-    cd /opt
-	curl -L "https://www.vtk.org/files/release/8.2/VTK-8.2.0.tar.gz" | tar xz && \
-	mkdir -p /opt/VTK-8.2.0/build
-	cp /opt/patches/vtk-config /opt/VTK-8.2.0/build/CMakeCache.txt
-	cd /opt/VTK-8.2.0/build && cmake .. && make -j$(nproc) && make install
-
-    exit 0
-		
-	    
-    # # install VORO (for LAMMPS)
-	# mkdir /opt/VORO && cd /opt/VORO
-    # curl -L "https://math.lbl.gov/voro++/download/dir/voro++-0.4.6.tar.gz"  | tar xz
-    # cd voro++-0.4.6 ;    make -j$(nproc) ;    make install 
-    # # Install LAMMPS -------------
-    # git clone --depth 1 https://github.com/lammps/lammps.git /opt/lammps
-    # cd /opt/lammps
-   	# cp /opt/patches/Makefile.vtk /opt/lammps/lib/vtk/Makefile.lammps   
-    # git fetch --depth 1 origin {{ LAMMPS_VERSION }}
-    # git checkout {{ LAMMPS_VERSION }}
-    # lammps_commit=$(git rev-parse --short HEAD)
-    # mkdir build
-    # cd build
-    # # -DVORO_INCLUDE_DIR=/usr/local/include/voro++ \
-	# # -DVORO_LIBRARY=/usr/local/lib \   	   	
-    # cmake -C ../cmake/presets/most.cmake \
-    # 	-DPKG_MOLECULE=yes -DPKG_DIPOLE=yes  -DPKG_KSPACE=yes -DPKG_EXTRA-PAIR=yes -DPKG_DIELECTRIC=yes -DPKG_EFF=yes\
-    # 	-DCMAKE_INSTALL_PREFIX=/opt/lammps \
-   	#    	-DBUILD_MPI=on -DBUILD_OMP=off -DBUILD_LIB=on -DFFT=FFTW3 ../cmake
-    # make -j$(nproc)
-    # make install
-
+	set +e
 	
     # Install OpenFOAM -----------
     git clone --branch OpenFOAM-v{{ OPENFOAM_VERSION }} \
@@ -80,7 +37,7 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     git config --global user.name "Elwardi"
     git am -3 /opt/patches/0001-fix-working-with-CPL.patch
     git am -3 /opt/patches/0002-fix-compile-on-newer-compilers.patch
-    sed -i 's/export WM_MPLIB=SYSTEMOPENMPI/export WM_MPLIB=MPICH/' etc/bashrc
+    sed -i 's/export WM_MPLIB=SYSTEMOPENMPI/export WM_MPLIB=SYSTEMMPI/' etc/bashrc
     export MPI_ROOT="$MPICH_DIR"
     export MPI_ARCH_INC="-isystem $MPI_ROOT/include"
     export MPI_ARCH_LIBS="-L$MPI_ROOT/lib -lmpi"
@@ -89,7 +46,6 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     source etc/bashrc
     export FOAM_CPL_APP_LIBBIN=${FOAM_LIBBIN}
     ./Allwmake -j$(nproc)
-    ln -s /opt/mpich/lib/libmpi.so  /opt/mpich/lib/libmpi.so.1 
     jq --arg app openfoam --arg commit $openfoam_commit \
         '.[$app] |= if . == null then
         {
@@ -127,7 +83,6 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     export MPI_ARCH_INC="-isystem /opt/mpich/include"
     export MPI_ARCH_LIBS="-L/opt/mpich/lib -lmpi"
     export MPI_ARCH_FLAGS="-DOMPI_SKIP_MPICXX"
-    export PATH=/opt/lammps/bin:$PATH
     export FOAM_INSTALL_DIR=/usr/lib/openfoam/openfoam{{ OPENFOAM_VERSION }}
 
 %runscript
@@ -143,4 +98,4 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     fi
 
 %labels
-    Description Test applications for ESI OpenFOAM
+    TBD openFOAM for CPL

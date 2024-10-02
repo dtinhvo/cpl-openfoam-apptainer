@@ -31,8 +31,8 @@ But you can also just pull it from GHCR.io:
 ```bash
 # Adjust the container path accordingly
 # cd path/to/cpl-openfoam-apptainer
-apptainer pull cpl-openfoam-lammps-2112-fcbc37d5a40e6dbd91148921378d28fca5294675.sif oras://ghcr.io/foamscience/cpl-openfoam-lammps-2112-fcbc37d5a40e6dbd91148921378d28fca5294675:latest
-alias cpl="apptainer run --hostname cpl --sharens cpl-openfoam-lammps-2112-fcbc37d5a40e6dbd91148921378d28fca5294675.sif"
+apptainer pull cpl-openfoam-lammps-2112-fcbc37d5a40e6dbd91148921378d28fca5294675-8.2.0.sif oras://ghcr.io/foamscience/cpl-openfoam-lammps-2112-fcbc37d5a40e6dbd91148921378d28fca5294675-8.2.0:latest
+alias cpl="apptainer run --hostname cpl --sharens cpl-openfoam-lammps-2112-fcbc37d5a40e6dbd91148921378d28fca5294675-8.2.0.sif"
 cpl info
 ```
 

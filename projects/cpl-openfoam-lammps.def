@@ -22,13 +22,38 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
 %files
     {{ CONTAINERS_DIR }}/../partials/0001-fix-working-with-CPL.patch /opt/patches/0001-fix-working-with-CPL.patch
     {{ CONTAINERS_DIR }}/../partials/0002-fix-compile-on-newer-compilers.patch /opt/patches/0002-fix-compile-on-newer-compilers.patch
-
+	
 %post -c /bin/bash
-    # Install LAMMPS -------------
+	export MPI_HOME=/opt/mpich
+	export MPI_DIR=/opt/mpich
+	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+	
     DEBIAN_FRONTEND=noninteractive
-    apt install -y --no-install-recommends \
+    apt-get update
+    apt install -y --no-install-recommends --fix-missing --fix-broken\
         libfftw3-dev libjpeg-dev libpng-dev cmake zlib1g-dev m4 \
-        flex libfl-dev cmake bison libopenblas-dev liblapack-dev
+        flex libfl-dev cmake bison libopenblas-dev liblapack-dev \
+        libglu1-mesa-dev freeglut3-dev
+
+    # Compile VTK with MPICH
+    cd /opt
+    vtk_short=$(echo {{ VTK_VERSION }} | cut -d '.' -f 1-2)
+    curl -LO https://www.vtk.org/files/release/$vtk_short/VTK-{{ VTK_VERSION }}.tar.gz
+    tar -xvf VTK-{{ VTK_VERSION }}.tar.gz
+    mkdir -p VTK-{{ VTK_VERSION }}/build
+    cd VTK-{{ VTK_VERSION }}/build
+    cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_SHARED_LIBS=OFF
+    make -j$(nproc)
+    make install
+
+    # Install VORO (for LAMMPS)
+	mkdir /opt/VORO && cd /opt/VORO
+    curl -L "https://math.lbl.gov/voro++/download/dir/voro++-0.4.6.tar.gz"  | tar xz
+    cd voro++-0.4.6 ;    make -j$(nproc) ;    make install 
+
+    # Install LAMMPS -------------
     git clone --depth 1 https://github.com/lammps/lammps.git /opt/lammps
     cd /opt/lammps
     git fetch --depth 1 origin {{ LAMMPS_VERSION }}
@@ -36,7 +61,10 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     lammps_commit=$(git rev-parse --short HEAD)
     mkdir build
     cd build
-    cmake ../cmake -DCMAKE_INSTALL_PREFIX=/opt/lammps -DBUILD_MPI=on -DBUILD_OMP=off -DBUILD_LIB=on -DFFT=FFTW3
+    cmake -C ../cmake/presets/most.cmake \
+    	-DPKG_MOLECULE=yes -DPKG_DIPOLE=yes  -DPKG_KSPACE=yes -DPKG_EXTRA-PAIR=yes -DPKG_DIELECTRIC=yes -DPKG_EFF=yes\
+    	-DCMAKE_INSTALL_PREFIX=/opt/lammps \
+   	   	-DBUILD_MPI=on -DBUILD_OMP=off -DBUILD_LIB=on -DFFT=FFTW3 ../cmake
     make -j$(nproc)
     make install
 
@@ -58,6 +86,19 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     source etc/bashrc
     export FOAM_CPL_APP_LIBBIN=${FOAM_LIBBIN}
     ./Allwmake -j$(nproc)
+    jq --arg app vtk --arg version {{ VTK_VERSION }} \
+        --arg path /opt/VTK-{{ VTK_VERSION }} \
+        '.[$app] |= if . == null then
+        {
+            version: $commit,
+            path: $path,
+        }
+        else . +
+        {
+            version: $commit,
+            path: $path,
+        } end' /apps.json > /tmp/apps.json
+    mv /tmp/apps.json /apps.json
     jq --arg app openfoam --arg commit $openfoam_commit \
         '.[$app] |= if . == null then
         {
@@ -111,4 +152,4 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     fi
 
 %labels
-    Description Test applications for ESI OpenFOAM
+    Description Lammps+OpenFOAM with CPL

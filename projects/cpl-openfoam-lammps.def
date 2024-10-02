@@ -32,12 +32,23 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     apt-get update
     apt install -y --no-install-recommends --fix-missing --fix-broken\
         libfftw3-dev libjpeg-dev libpng-dev cmake zlib1g-dev m4 \
-        flex libfl-dev cmake bison libopenblas-dev liblapack-dev libvtk9-dev
-		
+        flex libfl-dev cmake bison libopenblas-dev liblapack-dev \
+        libglu1-mesa-dev freeglut3-dev
 
-		set -e
-	    
-    # install VORO (for LAMMPS)
+    # Compile VTK with MPICH
+    cd /opt
+    vtk_short=$(echo {{ VTK_VERSION }} | cut -d '.' -f 1-2)
+    curl -LO https://www.vtk.org/files/release/$vtk_short/VTK-{{ VTK_VERSION }}.tar.gz
+    tar -xvf VTK-{{ VTK_VERSION }}.tar.gz
+    mkdir -p VTK-{{ VTK_VERSION }}/build
+    cd VTK-{{ VTK_VERSION }}/build
+    cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_SHARED_LIBS=OFF
+    make -j$(nproc)
+    make install
+
+    # Install VORO (for LAMMPS)
 	mkdir /opt/VORO && cd /opt/VORO
     curl -L "https://math.lbl.gov/voro++/download/dir/voro++-0.4.6.tar.gz"  | tar xz
     cd voro++-0.4.6 ;    make -j$(nproc) ;    make install 
@@ -50,8 +61,6 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     lammps_commit=$(git rev-parse --short HEAD)
     mkdir build
     cd build
-    # -DVORO_INCLUDE_DIR=/usr/local/include/voro++ \
-	# -DVORO_LIBRARY=/usr/local/lib \   	   	
     cmake -C ../cmake/presets/most.cmake \
     	-DPKG_MOLECULE=yes -DPKG_DIPOLE=yes  -DPKG_KSPACE=yes -DPKG_EXTRA-PAIR=yes -DPKG_DIELECTRIC=yes -DPKG_EFF=yes\
     	-DCMAKE_INSTALL_PREFIX=/opt/lammps \
@@ -59,8 +68,6 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     make -j$(nproc)
     make install
 
-		set +e
-	
     # Install OpenFOAM -----------
     git clone --branch OpenFOAM-v{{ OPENFOAM_VERSION }} \
         https://develop.openfoam.com/Development/openfoam /usr/lib/openfoam/openfoam{{ OPENFOAM_VERSION }}
@@ -79,6 +86,19 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     source etc/bashrc
     export FOAM_CPL_APP_LIBBIN=${FOAM_LIBBIN}
     ./Allwmake -j$(nproc)
+    jq --arg app vtk --arg version {{ VTK_VERSION }} \
+        --arg path /opt/VTK-{{ VTK_VERSION }} \
+        '.[$app] |= if . == null then
+        {
+            version: $commit,
+            path: $path,
+        }
+        else . +
+        {
+            version: $commit,
+            path: $path,
+        } end' /apps.json > /tmp/apps.json
+    mv /tmp/apps.json /apps.json
     jq --arg app openfoam --arg commit $openfoam_commit \
         '.[$app] |= if . == null then
         {
@@ -132,4 +152,4 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     fi
 
 %labels
-    Description Test applications for ESI OpenFOAM
+    Description Lammps+OpenFOAM with CPL

@@ -64,6 +64,7 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     cmake -C ../cmake/presets/most.cmake \
     	-DPKG_MOLECULE=yes -DPKG_DIPOLE=yes  -DPKG_KSPACE=yes -DPKG_EXTRA-PAIR=yes -DPKG_DIELECTRIC=yes -DPKG_EFF=yes\
     	-DCMAKE_INSTALL_PREFIX=/opt/lammps \
+		-DPKG_VTK=yes\
    	   	-DBUILD_MPI=on -DBUILD_OMP=off -DBUILD_LIB=on -DFFT=FFTW3 ../cmake
     make -j$(nproc)
     make install

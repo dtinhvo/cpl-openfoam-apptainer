@@ -10,13 +10,13 @@
 #
 # ---------------------------------------------------------------------------
 Bootstrap: localimage
-From: containers/basic/{{ BASE_CONTAINER }}.sif
+From: containers/basic/{{ OS_DISTRO }}-{{ OS_VERSION }}-{{MPI_IMPLEMENTATION}}-{{ MPI_VERSION }}.sif
 
 %arguments
     OS_DISTRO=ubuntu
     OS_VERSION=24.04
-    MPI_IMPLEMENTATION=openmpi
-    MPI_VERSION=4.1.5
+    MPI_IMPLEMENTATION=mpich
+    MPI_VERSION=4.1
     FRAMEWORK_VERSION=5.0
     FRAMEWORK_GIT_REF=master
 
@@ -57,6 +57,17 @@ From: containers/basic/{{ BASE_CONTAINER }}.sif
     mv /tmp/apps.json /apps.json
 
 %environment
+    export CPL_PATH=/opt/cpl
+    export CPL_BIN_PATH="$CPL_PATH/bin"
+    export PATH=${CPL_BIN_PATH}:$PATH
+    export CPL_LIBRARY_PATH="$CPL_PATH/lib"
+    export CPL_INCLUDE_PATH="$CPL_PATH/include"
+    export LD_LIBRARY_PATH="$CPL_LIBRARY_PATH/:${LD_LIBRARY_PATH}"
+    export PYTHONPATH="$CPL_PATH/src/bindings/python:$PYTHONPATH"
+    export PYTHONPATH="$CPL_PATH/utils:$PYTHONPATH"
+    export CPLPY_PATH="$CPL_PATH/src/bindings/python"
+    . /cpl/bin/activate
+
     #!/bin/bash
     jq -r '.. | .source_script? // empty' /apps.json | while read -r script; do
       if [[ -f "$script" ]]; then

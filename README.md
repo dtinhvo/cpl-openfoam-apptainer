@@ -1,3 +1,17 @@
+# TODOs
+1. build scripts: add a cloner line
+2. cpl alias: grep the one file existing in ?, then sub into the cpl alias 
+3. tools.img: make script to make and populate a consistent environment 
+```
+(make overlay)
+apptainer exec --overlay my_overlay.img my_container.sif bash -c '
+    {Commands here} &&
+    {Commands here}
+'
+
+```
+4. 
+
 # CPL/OpenFOAM+LAMMPS containers with apptainer
 
 > [!NOTE]
@@ -18,11 +32,9 @@
 > ```
 
  
-Here are your quick instructions to build the containers:
+Here are your quick instructions to build the containers (assuming you are already inside the repo):
 ```bash
 git clone https://github.com/FoamScience/openfoam-apptainer-packaging /tmp/tainers
-git clone https://github.com/FoamScience/cpl-openfoam-containers
-cd cpl-openfoam-containers
 ansible-playbook /tmp/tainers/build.yaml --extra-vars "original_dir=$PWD" --extra-vars "@config.yaml"
 # check containers/projects/cpl-openfoam-lammps*.sif
 ```
@@ -67,6 +79,6 @@ Then you can post process on the host machine. Or, add processing tools to
 
 If you want to alter the container itself in any way, create an overlay image and load it:
 ```bash
-apptainer overlay create -s 1024 overlay.img #<- 1GB overlay image
-apptainer run --sharens --overlay overlay.img path/to/cpl-openfoam-lammps*.sif
+apptainer overlay create -s 1024  tools.img #<- 1GB overlay image
+apptainer run --sharens --overlay tools.img path/to/cpl-openfoam-lammps*.sif
 ```

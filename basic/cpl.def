@@ -1,9 +1,9 @@
 # ---------------------------------------------------------------------------
 #
-# Create Ubuntu-based Foam-Extend image
+# Create Ubuntu-based CPL image
 #
 # Build
-#   apptainer build fe.sif foam-extend.def
+#   apptainer build cpl.sif cpl.def
 #
 # Note
 #   apptainer version 1.3.1
@@ -17,41 +17,28 @@ From: containers/basic/{{ OS_DISTRO }}-{{ OS_VERSION }}-{{MPI_IMPLEMENTATION}}-{
     OS_VERSION=24.04
     MPI_IMPLEMENTATION=mpich
     MPI_VERSION=4.1
-    FRAMEWORK_VERSION=5.0
-    FRAMEWORK_GIT_REF=master
+    FRAMEWORK_VERSION=master
+    FRAMEWORK_GIT_REF=default
 
 %post -c /bin/bash
-    DEBIAN_FRONTEND=noninteractive
-    apt-get update
-    apt-get -y install --no-install-recommends \
-        binutils-dev cmake flex zlib1g-dev libncurses-dev bison libbison-dev libfl-dev \
-        python3 libpython3-dev libxt-dev rpm mercurial apt-utils\
-        patch libmetis-dev libscotch-dev libparmetis-dev
-    mkdir -p /opt/foam
-    git clone --single-branch --branch {{ FRAMEWORK_GIT_REF }} --depth 1 \
-        git://git.code.sf.net/p/foam-extend/foam-extend-{{ FRAMEWORK_VERSION }} \
-        /opt/foam/foam-extend-{{ FRAMEWORK_VERSION }}
-    sed -i 's|^foamInstall.*|foamInstall=/opt/foam|' /opt/foam/foam-extend-{{ FRAMEWORK_VERSION }}/etc/bashrc
-    nProcs=$(nproc)
-    /bin/bash -c "cd /opt/foam/foam-extend-{{ FRAMEWORK_VERSION }} && source etc/bashrc && ./Allwmake.firstInstall -j $nProcs"
-    rm -rf /opt/foam/foam-extend-{{ FRAMEWORK_VERSION }}/tutorials/*
-    FRAMEWORK_COMMIT_HASH=$(git -C /opt/foam/foam-extend-{{ FRAMEWORK_VERSION }} rev-parse HEAD)
-    jq --arg app openfoam --arg commit $FRAMEWORK_COMMIT_HASH \
-        --arg branch {{ FRAMEWORK_GIT_REF }} \
+    python3 -m venv cpl
+    source cpl/bin/activate
+    pip3 install mpi4py numpy pytest scipy
+    git clone https://github.com/Crompulence/cpl-library /opt/cpl
+    cd /opt/cpl
+    git checkout {{ FRAMEWORK_VERSION }}
+    make PLATFORM=gcc
+    jq --arg app cpl --arg commit {{ FRAMEWORK_VERSION }} \
         '.[$app] |= if . == null then
         {
-            fork: "foam-extend",
-            branch: $branch,
+            fork: "cpl-library",
             commit: $commit,
-            source_script: "/opt/foam/foam-extend-{{ FRAMEWORK_VERSION }}/etc/bashrc",
             version: "{{ FRAMEWORK_VERSION }}"
         }
         else . +
         {
-            fork: "foam-extend",
-            branch: $branch,
+            fork: "cpl-library",
             commit: $commit,
-            source_script: "/opt/foam/foam-extend-{{ FRAMEWORK_VERSION }}/etc/bashrc",
             version: "{{ FRAMEWORK_VERSION }}"
         } end' /apps.json > /tmp/apps.json
     mv /tmp/apps.json /apps.json
@@ -68,26 +55,14 @@ From: containers/basic/{{ OS_DISTRO }}-{{ OS_VERSION }}-{{MPI_IMPLEMENTATION}}-{
     export CPLPY_PATH="$CPL_PATH/src/bindings/python"
     . /cpl/bin/activate
 
-    #!/bin/bash
-    jq -r '.. | .source_script? // empty' /apps.json | while read -r script; do
-      if [[ -f "$script" ]]; then
-        source "$script"
-      fi
-    done
-    jq -r '.. | .python_env? // empty' /apps.json | while read -r script; do
-      if [[ -f "$script" ]]; then
-        source "$script/bin/activate"
-      fi
-    done
-
-%runscript
-    #!/bin/bash
-    if [ $# -eq 0 ]; then
-        /bin/bash
-    else
-        /bin/bash -c "$@"
-    fi
+#%runscript
+#    /bin/bash -c 'cd /usr/lib/openfoam/openfoam{{ FRAMEWORK_VERSION }} && source etc/bashrc && mkdir -p $FOAM_USER_LIBBIN && mkdir -p $FOAM_USER_APPBIN'
+#    if [ $# -eq 0 ]; then
+#        /usr/bin/openfoam{{ FRAMEWORK_VERSION }}
+#    else
+#        /usr/bin/openfoam{{ FRAMEWORK_VERSION }} $@
+#    fi
 
 %labels
     Maintainer Mohammed Elwardi Fadeli
-    Description Ubuntu-based Foam-Extend image with OpenMPI
+    Description Ubuntu-based ESI CPL image

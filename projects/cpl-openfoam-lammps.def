@@ -69,10 +69,10 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     make -j$(nproc)
     make install
 
-    # Install OpenFOAM -----------
-    git clone --branch OpenFOAM-v{{ OPENFOAM_VERSION }} \
-        https://develop.openfoam.com/Development/openfoam /usr/lib/openfoam/openfoam{{ OPENFOAM_VERSION }}
-    cd /usr/lib/openfoam/openfoam{{ OPENFOAM_VERSION }}
+    # Install OpenFOAM ----------- TODO OPENFOAM_VERSION -> FOAM_EXTEND_VERSION
+    git clone --branch OpenFOAM-v{{ FOAM_EXTEND_VERSION }} \
+       git clone --depth 1 --single-branch --branch usr/lib/openfoam/foam-extend-{{ FOAM_EXTEND_VERSION }}
+    cd /usr/lib/openfoam/foam-extend-{{ FOAM_EXTEND_VERSION }}
     openfoam_commit=$(git rev-parse --short HEAD)
     git config --global user.email "me@example.com"
     git config --global user.name "Elwardi"
@@ -83,7 +83,7 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     export MPI_ARCH_INC="-isystem $MPI_ROOT/include"
     export MPI_ARCH_LIBS="-L$MPI_ROOT/lib -lmpi"
     export MPI_ARCH_FLAGS="-DOMPI_SKIP_MPICXX"
-    export FOAM_INSTALL_DIR=/usr/lib/openfoam/openfoam{{ OPENFOAM_VERSION }}
+    export FOAM_INSTALL_DIR=/usr/lib/openfoam/foam-extend-{{ FOAM_EXTEND_VERSION }}
     source etc/bashrc
     export FOAM_CPL_APP_LIBBIN=${FOAM_LIBBIN}
     ./Allwmake -j$(nproc)
@@ -105,15 +105,15 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
         {
             commit: $commit,
             patches_path: "/opt/patches",
-            path: "/usr/lib/openfoam/openfoam{{ OPENFOAM_VERSION }}",
-            version: "{{ OPENFOAM_VERSION }}"
+            path: "/usr/lib/openfoam/foam-extend-{{ FOAM_EXTEND_VERSION }}",
+            version: "{{ FOAM_EXTEND_VERSION  }}"
         }
         else . +
         {
             commit: $commit,
-            path: "/usr/lib/openfoam/openfoam{{ OPENFOAM_VERSION }}",
+            path: "/usr/lib/openfoam/foam-extend-{{ FOAM_EXTEND_VERSION }}",
             patches_path: "/opt/patches",
-            version: "{{ OPENFOAM_VERSION }}"
+            version: "{{ FOAM_EXTEND_VERSION }}"
         } end' /apps.json > /tmp/apps.json
     mv /tmp/apps.json /apps.json
     jq --arg app lammps --arg commit $lammps_commit \
@@ -138,17 +138,18 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     export MPI_ARCH_LIBS="-L/opt/mpich/lib -lmpi"
     export MPI_ARCH_FLAGS="-DOMPI_SKIP_MPICXX"
     export PATH=/opt/lammps/bin:$PATH
-    export FOAM_INSTALL_DIR=/usr/lib/openfoam/openfoam{{ OPENFOAM_VERSION }}
+    export FOAM_INSTALL_DIR=/usr/lib/openfoam/foam-extend-{{ FOAM_EXTEND_VERSION }}
+
 
 %runscript
     if [ $# -eq 0 ]; then
         exec /bin/bash -c '
-            source /usr/lib/openfoam/openfoam{{ OPENFOAM_VERSION }}/etc/bashrc > /dev/null
+            source /usr/lib/openfoam/foam-extend-{{ FOAM_EXTEND_VERSION }}/etc/bashrc > /dev/null
             /bin/bash --login
         '
     else
         exec /bin/bash -c "
-            source /usr/lib/openfoam/openfoam{{ OPENFOAM_VERSION }}/etc/bashrc > /dev/null
+            source /usr/lib/openfoam/foam-extend-{{ FOAM_EXTEND_VERSION }}/etc/bashrc > /dev/null
             $@"
     fi
 

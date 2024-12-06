@@ -48,10 +48,7 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     make -j$(nproc)
     make install
 
-    # Install VORO (for LAMMPS)
-	mkdir /opt/VORO && cd /opt/VORO
-    curl -L "https://math.lbl.gov/voro++/download/dir/voro++-0.4.6.tar.gz"  | tar xz
-    cd voro++-0.4.6 ;    make -j$(nproc) ;    make install 
+
 
     # Install LAMMPS -------------
     git clone --depth 1 https://github.com/lammps/lammps.git /opt/lammps
@@ -87,6 +84,12 @@ From: {{ CONTAINERS_DIR }}/basic/{{ BASE_CONTAINER }}.sif
     source etc/bashrc
     export FOAM_CPL_APP_LIBBIN=${FOAM_LIBBIN}
     ./Allwmake -j$(nproc)
+
+    # Install VORO (for LAMMPS)
+	mkdir /opt/VORO && cd /opt/VORO
+    curl -L "https://math.lbl.gov/voro++/download/dir/voro++-0.4.6.tar.gz"  | tar xz
+    cd voro++-0.4.6 ;    make -j$(nproc) ;    make install 
+
     jq --arg app vtk --arg version {{ VTK_VERSION }} \
         --arg path /opt/VTK-{{ VTK_VERSION }} \
         '.[$app] |= if . == null then

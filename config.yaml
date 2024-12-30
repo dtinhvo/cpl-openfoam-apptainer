@@ -16,8 +16,8 @@ containers:
       base_container: cpl
       definition: projects/cpl-openfoam-lammps.def
       build_args:
-        openfoam_version:
-          - 2112
+        foam_extend_version:
+          - 5.0
         lammps_version:
           - fcbc37d5a40e6dbd91148921378d28fca5294675 # MUST be long hash
         vtk_version:

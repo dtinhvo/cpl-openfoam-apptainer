@@ -1,0 +1,4 @@
+LAMMPS (29 Aug 2024 - Development - fcbc37d)
+exit
+ERROR: Unknown command: exit (src/input.cpp:314)
+Last command: exit
